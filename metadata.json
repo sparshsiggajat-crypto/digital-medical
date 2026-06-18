@@ -1,0 +1,6 @@
+{
+  "name": "Swasthya Medical Store Management System",
+  "description": "Swasthya Medical Store Management System: Digital Pharmacy & Billing Solution for India featuring drug license tracker, GST invoices, CGST/SGST calculations, Aadhaar configurations, and Indian pharmaceutical records.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
