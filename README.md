@@ -21,13 +21,7 @@ As part of the modernization mandate, all container overheads, complex Docker fi
 5. **`INSTALL.md`**: Simplified, robust setup instructions spanning development environments, Linux VPS (systemd), Windows Waitress, and Serverless PaaS.
 
 ---
-## 🌐 Live Demo
 
-🚀 **Try the application online:**
-
-**https://swasthya-medical-store-management-system-356200851822.asia-southeast1.run.app**
-
----
 ## ⭐ Advanced Features Matrix
 
 - **Smart Dashboard**: Business intelligence summary tracking total sales, inventory size, low-stock quantities, and expiring medicine warnings alongside interactive **Recharts** charts.

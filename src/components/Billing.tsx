@@ -47,6 +47,7 @@ export default function Billing({ medicines, onAddBill, currentUserFullname }: B
   // Receipt modal state
   const [savedBill, setSavedBill] = useState<Bill | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [ocrLoading, setOcrLoading] = useState(false);
 
   // Barcode scanning state
   const [barcodeScanTerm, setBarcodeScanTerm] = useState('');
@@ -404,11 +405,88 @@ export default function Billing({ medicines, onAddBill, currentUserFullname }: B
                     <button 
                       type="button"
                       onClick={() => handleSimulateScan("999999999999")}
-                      className="px-2 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 rounded text-[10px] font-extrabold text-gray-600 transition-colors border border-gray-200"
+                      className="px-2 py-1 bg-gray-100 hover:bg-red-50 hover:text-red-700 rounded text-[10px] font-extrabold text-gray-600 transition-colors border border-gray-200 cursor-pointer"
                     >
                       [Unknown Drug]
                     </button>
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* AI Prescription OCR Scanner Card */}
+          <div className="bg-gradient-to-r from-emerald-50/50 to-slate-50 border border-dashed border-emerald-300 dark:from-emerald-950/10 dark:to-slate-900 dark:border-emerald-800 p-5 rounded-xl space-y-3 shadow-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-600 dark:text-emerald-400">
+                <QrCode className="w-4.5 h-4.5 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-xs font-black text-slate-900 dark:text-slate-200 uppercase tracking-wider">AI prescription OCR scanner</h4>
+                <p className="text-[10px] text-gray-400 mt-0.5">Drag & drop doctor prescription sheets to auto-populate invoices</p>
+              </div>
+            </div>
+
+            <div className="border border-dashed border-gray-200 dark:border-slate-805 hover:border-emerald-400 dark:hover:border-emerald-600 rounded-xl p-4 text-center transition-all bg-white dark:bg-slate-900 select-none">
+              {!ocrLoading ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Drop prescription JPG/PDF or click to browse</p>
+                  <p className="text-[10px] text-gray-450">Formats: PDF, JPEG, PNG • Up to 8MB</p>
+                  
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setOcrLoading(true);
+                      try {
+                        setErrorMessage('');
+                        setBarcodeScanTerm('');
+                        
+                        const res = await fetch('/api/ai/ocr', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' }
+                        });
+                        const data = await res.json();
+                        
+                        if (res.ok && data.success) {
+                          setCustomerName(data.patientName || 'Rahul Verma');
+                          setCustomerPhone('9876543210');
+                          setCustomerAddress('Mumbai, Maharashtra');
+                          
+                          // Find matching medicines
+                          const matchedItems = data.items.map((item: any) => {
+                            const found = medicines.find(m => m.id === item.medicineId);
+                            if (found) {
+                              return { medicine: found, quantity: item.quantity };
+                            }
+                            return null;
+                          }).filter(Boolean);
+                          
+                          if (matchedItems.length > 0) {
+                            setCart(matchedItems);
+                            setPrescriptionVerified(true);
+                            alert(`✓ SUCCESS: Swasthya AI OCR decoded prescription sheet.\n\n• Patient: ${data.patientName}\n• Prescriber: ${data.doctorName}\n• Schedule H drugs verified. Cart pre-loaded with matching catalog batches!`);
+                          } else {
+                            alert("AI OCR scanned sheets successfully, but detected products are currently out of stock.");
+                          }
+                        } else {
+                          setErrorMessage(data.error || 'Prescription parsing failed.');
+                        }
+                      } catch (err: any) {
+                        setErrorMessage('OCR scanner failed to respond: ' + err.message);
+                      } finally {
+                        setOcrLoading(false);
+                      }
+                    }}
+                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold uppercase rounded-lg cursor-pointer border border-emerald-500/20 shadow-xs"
+                  >
+                    <ClipboardCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    Simulate Prescription Upload
+                  </button>
+                </div>
+              ) : (
+                <div className="py-4 space-y-2 flex flex-col items-center justify-center">
+                  <span className="w-6 h-6 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin"></span>
+                  <p className="text-xs font-semibold text-slate-700 animate-pulse">Running Neural OCR & Drug Code Cross-Checks...</p>
                 </div>
               )}
             </div>

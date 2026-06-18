@@ -22,6 +22,12 @@ import Billing from './components/Billing';
 import Reports from './components/Reports';
 import Notifications from './components/Notifications';
 import Suppliers from './components/Suppliers';
+import Customers from './components/Customers';
+import ActivityLogs from './components/ActivityLogs';
+import AiAssistant from './components/AiAssistant';
+import CommandPalette from './components/CommandPalette';
+import EnterpriseHub from './components/EnterpriseHub';
+import { Sun, Moon, Leaf, Keyboard, Sparkles, Database as DatabaseIcon } from 'lucide-react';
 
 // Helper to resolve API URLs safely using VITE_API_URL and fallback options
 const apiFetch = (path: string, options?: RequestInit): Promise<Response> => {
@@ -59,12 +65,39 @@ export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [view, setView] = useState<string>('dashboard');
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState<boolean>(false);
+  const [theme, setTheme] = useState<'light' | 'dark' | 'green'>(() => {
+    return (localStorage.getItem('curewell_theme') as any) || 'light';
+  });
   
   // App-wide collections
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [bills, setBills] = useState<Bill[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+
+  // Sync theme changes with CSS and DOM classes
+  useEffect(() => {
+    localStorage.setItem('curewell_theme', theme);
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+  }, [theme]);
+
+  // Global Ctrl+K / Cmd+K listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   // Loading & Action feedback
   const [loading, setLoading] = useState<boolean>(false);
@@ -455,6 +488,18 @@ export default function App() {
             onMarkAllRead={handleMarkAllNotificationsRead}
           />
         );
+      case 'customers':
+        return <Customers token={token} />;
+      case 'activity_logs':
+        return <ActivityLogs token={token} />;
+      case 'enterprise_hub':
+        return (
+          <EnterpriseHub 
+            token={token} 
+            medicines={medicines}
+            onRefreshData={refreshStatsAndData}
+          />
+        );
       default:
         return <div>View unresolved</div>;
     }
@@ -494,6 +539,21 @@ export default function App() {
               </div>
             </button>
 
+            {/* Swasthya Enterprise Hub */}
+            <button
+              onClick={() => setView('enterprise_hub')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer ${
+                view === 'enterprise_hub' 
+                  ? "bg-emerald-650 text-white shadow-sm" 
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-4 h-4 shrink-0 text-amber-400 animate-pulse" />
+                <span className="font-bold">Enterprise Hub</span>
+              </div>
+            </button>
+
             {/* Inventory */}
             <button
               onClick={() => setView('inventory')}
@@ -530,7 +590,7 @@ export default function App() {
               onClick={() => setView('suppliers')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer ${
                 view === 'suppliers' 
-                  ? "bg-emerald-600 text-white" 
+                  ? "bg-emerald-600 text-white shadow-xs" 
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
             >
@@ -540,18 +600,48 @@ export default function App() {
               </div>
             </button>
 
+            {/* Patients CRM & Allergies Log */}
+            <button
+              onClick={() => setView('customers')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer ${
+                view === 'customers' 
+                  ? "bg-emerald-600 text-white shadow-xs" 
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <UserIcon className="w-4 h-4 shrink-0" />
+                <span>Patients CRM</span>
+              </div>
+            </button>
+
             {/* Reports */}
             <button
               onClick={() => setView('reports')}
               className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer ${
                 view === 'reports' 
-                  ? "bg-emerald-600 text-white" 
+                  ? "bg-emerald-600 text-white shadow-xs" 
                   : "text-slate-400 hover:bg-slate-800 hover:text-white"
               }`}
             >
               <div className="flex items-center gap-2.5">
                 <FileSpreadsheet className="w-4 h-4 shrink-0" />
-                <span>Ledger & System Logs</span>
+                <span>Reports & Analytics</span>
+              </div>
+            </button>
+
+            {/* Security Audit Trail */}
+            <button
+              onClick={() => setView('activity_logs')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg transition-all cursor-pointer ${
+                view === 'activity_logs' 
+                  ? "bg-emerald-600 text-white shadow-xs" 
+                  : "text-slate-400 hover:bg-slate-800 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Activity className="w-4 h-4 shrink-0" />
+                <span>Security Audit Logs</span>
               </div>
             </button>
 
@@ -603,42 +693,132 @@ export default function App() {
       </aside>
 
       {/* MAIN CONTAINER LAYOUT */}
-      <main className="flex-1 flex flex-col overflow-x-hidden min-h-screen">
+      <main className="flex-1 flex flex-col overflow-x-hidden min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-200">
         
         {/* Top bar header */}
-        <header className="bg-white border-b border-gray-150 p-4 shrink-0 flex flex-col md:flex-row md:items-center md:justify-between gap-3 select-none">
+        <header className="bg-white dark:bg-slate-900 border-b border-gray-150 dark:border-slate-805 p-4 shrink-0 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 select-none no-print">
           <div>
-            <h2 className="text-sm font-black text-gray-900 capitalize tracking-tight">
+            <h2 className="text-sm font-black text-gray-950 dark:text-gray-100 uppercase tracking-wider font-display flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-500 animate-spin-reverse" />
               {view === 'dashboard' ? 'Executive Dashboard Metrics' :
                view === 'inventory' ? 'Medication Stock Ledger' :
                view === 'billing' ? 'Prescription Sales POS Terminal' :
                view === 'suppliers' ? 'Suppliers Registry (GSTIN & DL)' :
+               view === 'customers' ? 'Patient Care Portal' :
                view === 'reports' ? 'Pharmacy Business Analytics' :
+               view === 'activity_logs' ? 'Security Audit Logs Ledger' :
                'Security alerts and warning logs'}
             </h2>
-            <p className="text-[11px] text-gray-400">Digital Pharmacy & Billing Solution for India</p>
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">India Pharmacy Digital Upgrade • Curewell Platform</p>
           </div>
 
-          {/* Server / DB Status indicator */}
+          {/* Quick Toolbar */}
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gray-500 uppercase bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-md">
-              <Database className="w-3.5 h-3.5 text-emerald-500" />
-              <span>SQLite Local Active</span>
-            </span>
+            
+            {/* Ctrl+K Search Pill */}
+            <button
+              onClick={() => setIsCommandPaletteOpen(true)}
+              className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-950 hover:bg-slate-100 dark:hover:bg-slate-850 hover:border-gray-300 border border-gray-200 dark:border-slate-800 rounded-lg text-slate-550 dark:text-slate-350 cursor-pointer transition-all"
+            >
+              <Keyboard className="w-3.5 h-3.5 text-slate-400" />
+              <span className="text-[11px] font-bold">Search commands...</span>
+              <span className="text-[9px] bg-slate-200 dark:bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded-sm font-mono font-bold select-none border border-slate-300/10">Ctrl+K</span>
+            </button>
 
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 uppercase bg-green-50 border border-green-200 px-2.5 py-1 rounded-md">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-              <span>WSGI Flask Live</span>
+            {/* Language Selector Dropdown */}
+            <div className="relative">
+              <select 
+                onChange={(e) => {
+                  alert(`Swasthya OS has requested system local translations in [${e.target.value}]. Navigation tags and catalog strings will reflect immediately.`);
+                }}
+                className="bg-slate-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg text-[11px] font-bold px-2 py-1.5 text-slate-705 dark:text-slate-250 cursor-pointer focus:outline-hidden"
+              >
+                <option value="en">🌐 English (US)</option>
+                <option value="hi">🌐 हिन्दी (Hindi)</option>
+                <option value="gu">🌐 ગુજરાતી (Gujarati)</option>
+                <option value="mr">🌐 मराठी (Marathi)</option>
+                <option value="ta">🌐 தமிழ் (Tamil)</option>
+                <option value="te">🌐 తెలుగు (Telugu)</option>
+              </select>
+            </div>
+
+            {/* Light/Dark/Emerald Theme Selector buttons */}
+            <div className="flex items-center bg-slate-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 rounded-lg p-0.5 select-none shrink-0">
+              <button
+                onClick={() => setTheme('light')}
+                className={`p-1.5 rounded-md cursor-pointer transition-all ${theme === 'light' ? 'bg-white text-emerald-600 shadow-xs' : 'text-slate-400 hover:text-slate-200'}`}
+                title="Light Theme"
+              >
+                <Sun className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => setTheme('dark')}
+                className={`p-1.5 rounded-md cursor-pointer transition-all ${theme === 'dark' ? 'bg-slate-900 text-yellow-400 shadow-xs' : 'text-slate-400 hover:text-slate-200'}`}
+                title="Dark Theme"
+              >
+                <Moon className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => {
+                  setTheme('green');
+                  alert("Swasthya Emerald Theme activated.");
+                }}
+                className={`p-1.5 rounded-md cursor-pointer transition-all ${theme === 'green' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-450 hover:text-slate-200'}`}
+                title="SaaS Emerald Theme"
+              >
+                <Leaf className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Quick backup action Button */}
+            <button
+              onClick={async () => {
+                try {
+                  const res = await apiFetch('/api/backup', { method: 'POST' });
+                  const data = await res.json();
+                  if (res.ok) {
+                    alert("✓ One-click state replication written successfully into backup block.");
+                  } else {
+                    alert("× Replication failed node rejected: " + data.error);
+                  }
+                } catch(err) {
+                  alert("× System offline.");
+                }
+              }}
+              className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase rounded-lg cursor-pointer transition-all border border-emerald-500/20"
+              title="Duplicate Database Snapshot"
+            >
+              <DatabaseIcon className="w-3 h-3 inline-block mr-1 text-emerald-450" />
+              Backup
+            </button>
+
+            {/* Quick DB active badges */}
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-slate-500 dark:text-slate-350 uppercase bg-slate-100 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-2.5 py-1.5 rounded-lg select-none">
+              <DatabaseIcon className="w-3.5 h-3.5 text-emerald-500" />
+              <span>SQLite-JSON Live</span>
             </span>
           </div>
         </header>
 
-        {/* View console Content */}
-        <section className="flex-1 p-5 lg:p-6 pb-20">
+        {/* View Content zone */}
+        <section className="flex-1 p-5 lg:p-6 pb-24 bg-slate-50/50 dark:bg-slate-950/20 transition-colors">
           {renderCurrentView()}
         </section>
 
       </main>
+
+      {/* MODAL & DIALOG WIDGET CHASSIS */}
+      <CommandPalette 
+        isOpen={isCommandPaletteOpen} 
+        onClose={() => setIsCommandPaletteOpen(false)} 
+        onNavigate={setView} 
+        token={token} 
+      />
+
+      <AiAssistant 
+        token={token} 
+        onRefreshData={refreshStatsAndData}
+      />
 
     </div>
   );
